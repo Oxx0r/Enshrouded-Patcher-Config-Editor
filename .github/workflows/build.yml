@@ -5,7 +5,7 @@ permissions:
 
 on:
   release:
-    types: [published, edited]
+    types: [published]
 
 jobs:
   build:
@@ -35,10 +35,11 @@ jobs:
       run: |
         dotnet publish EnshroudedConfigManager.csproj `
           -c Release `
-          -r win-x64 `
-          --self-contained false `
+          --no-self-contained `
           -p:PublishSingleFile=true `
           -p:IncludeNativeLibrariesForSelfContained=false `
+          -p:IncludeAllContentForSelfContained=false `
+          -p:UseAppHost=true `
           -p:DebugType=None `
           -p:DebugSymbols=false `
           -p:Version=${{ env.VERSION }} `
