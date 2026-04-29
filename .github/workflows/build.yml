@@ -2,7 +2,7 @@ name: Build Release EXE
 
 on:
   release:
-    types: [published]
+    types: [published, edited]
 
 jobs:
   build:
