@@ -1,0 +1,56 @@
+name: Build Release EXE
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        [cite_start]dotnet-version: '8.0.x' [cite: 1, 2]
+
+    - name: Extract Version
+      id: get_version
+      shell: bash
+      run: |
+        # Entfernt das 'v' vom Tag (z.B. v1.0.0 -> 1.0.0)
+        VERSION=${GITHUB_REF_NAME#v}
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+
+    - name: Restore Dependencies
+      run: dotnet restore
+
+    - name: Build and Publish
+      run: |
+        dotnet publish EnshroudedConfigManager.csproj `
+          -c Release `
+          -r win-x64 `
+          --self-contained false `
+          -p:PublishSingleFile=true `
+          -p:Version=${{ env.VERSION }} `
+          -p:FileVersion=${{ env.VERSION }} `
+          -p:AssemblyVersion=${{ env.VERSION }} `
+          -o ./publish [cite: 1, 2]
+
+    - name: Rename EXE
+      shell: pwsh
+      run: |
+        $oldName = "./publish/EnshroudedConfigManager.exe"
+        $newName = "./publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
+        Rename-Item -Path $oldName -NewName $newName
+
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v2
+      with:
+        files: "./publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
