@@ -31,7 +31,7 @@ namespace EnshroudedConfigManager
             // Gets the version from the Assembly (defined in .csproj)
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             string versionString = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0";
-            this.Title = $"Enshrouded Patcher Config Editor v{versionString}";
+            this.Title = $"Enshrouded Patcher Config Editor v{versionString} by Oxx0r";
         }
 
         private void LoadAndBuildUI()
