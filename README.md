@@ -1,4 +1,4 @@
-<img style="width: 40%;" alt="Enshrouded Config Editor UI Screenshot" src="https://github.com/user-attachments/assets/50f6f46f-84af-418a-b1c2-146d89057d32" />
+<img style="width: 40%;" alt="Enshrouded Config Editor UI Screenshot" src="https://github.com/user-attachments/assets/357f1612-ebb1-4498-a506-9d3a65406982" />
 
 # Enshrouded Patcher Config Editor
 
