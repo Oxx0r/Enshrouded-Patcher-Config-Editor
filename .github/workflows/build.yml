@@ -24,6 +24,7 @@ jobs:
       id: get_version
       shell: bash
       run: |
+        # Entfernt das 'v' vom Tag (z.B. v1.0.2 -> 1.0.2)
         VERSION=${GITHUB_REF_NAME#v}
         echo "VERSION=$VERSION" >> $GITHUB_ENV
         echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
@@ -38,6 +39,7 @@ jobs:
           -r win-x64 `
           --self-contained false `
           -p:PublishSingleFile=true `
+          -p:IncludeNativeLibrariesForSelfContained=false `
           -p:Version=${{ env.VERSION }} `
           -p:FileVersion=${{ env.VERSION }} `
           -p:AssemblyVersion=${{ env.VERSION }} `
@@ -48,12 +50,20 @@ jobs:
       run: |
         $publishDir = "$(Get-Location)/publish"
         $oldPath = "$publishDir/EnshroudedConfigManager.exe"
+        # Der neue Name darf keinen Pfad enthalten
         $newName = "Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
-        Rename-Item -Path $oldPath -NewName $newName
+        
+        if (Test-Path $oldPath) {
+            Rename-Item -Path $oldPath -NewName $newName
+        } else {
+            Write-Error "EXE nicht gefunden unter $oldPath"
+            exit 1
+        }
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
       with:
+        # Hier geben wir den Pfad zur umbenannten Datei an
         files: "publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
