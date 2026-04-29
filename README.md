@@ -2,7 +2,7 @@
 
 # Enshrouded Patcher Config Editor
 
-A dedicated configuration tool for the **Enshrouded Patcher**. This editor provides a user-friendly interface to manage your `config.json` without dealing with raw JSON syntax errors.
+A dedicated configuration tool for the **Enshrouded Patcher**. This editor provides a user-friendly interface to manage your `config.json` without dealing with raw JSON.
 
 ## Features
 * **Visual Options Management:** Easily enable or disable options for Player, Inventory, World, and Gameplay sections.
