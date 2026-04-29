@@ -43,13 +43,14 @@ jobs:
     - name: Rename EXE
       shell: pwsh
       run: |
-        $oldName = "./publish/EnshroudedConfigManager.exe"
-        $newName = "./publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
-        Rename-Item -Path $oldName -NewName $newName
+        $publishDir = "$(Get-Location)/publish"
+        $oldPath = "$publishDir/EnshroudedConfigManager.exe"
+        $newName = "Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
+        Rename-Item -Path $oldPath -NewName $newName
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v2
       with:
-        files: "./publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
+        files: "publish/Enshrouded Patcher Config Editor ${{ env.VERSION }}.exe"
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
