@@ -35,6 +35,7 @@ namespace EnshroudedConfigManager
             this.Title = $"Enshrouded Patcher Config Editor v{versionString} by Oxx0r";
         }
 
+        // Hilfsmethode: Markiert die Daten als geändert
         private void MarkAsDirty(object sender, EventArgs e) => _isDirty = true;
 
         private void LoadAndBuildUI()
@@ -55,7 +56,7 @@ namespace EnshroudedConfigManager
 
                 TxtVersion.Text = _config.kfcParserVersion;
 
-                // Aufruf der Sektions-Builder
+                // Erstellt die UI-Elemente dynamisch
                 BuildPathSection();
                 BuildModSections();
                 BuildSettingsSection();
@@ -65,11 +66,10 @@ namespace EnshroudedConfigManager
             catch (Exception ex) { MessageBox.Show($"Load Error: {ex.Message}"); }
         }
 
-        // Erstellt die Eingabefelder für gameDirectory und outputDirectory
         private void BuildPathSection()
         {
             if (_config == null) return;
-            PathSection.Children.Clear(); // Falls neu geladen wird
+            PathSection.Children.Clear();
             AddPathRow("gameDirectory", _config.gameDirectory);
             AddPathRow("outputDirectory", _config.outputDirectory);
         }
@@ -85,7 +85,7 @@ namespace EnshroudedConfigManager
 
             dock.Children.Add(lbl);
             dock.Children.Add(txt);
-            PathSection.Children.Add(dock); // Fügt die Zeile zum StackPanel in der XAML hinzu
+            PathSection.Children.Add(dock);
         }
 
         private void BuildModSections()
@@ -171,7 +171,7 @@ namespace EnshroudedConfigManager
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (PerformSave()) MessageBox.Show("Configuration saved successfully!");
+            if (PerformSave()) MessageBox.Show("Configuration saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private bool PerformSave()
@@ -224,7 +224,7 @@ namespace EnshroudedConfigManager
         {
             if (_isDirty)
             {
-                var result = MessageBox.Show("Save changes before starting the patcher?", "Unsaved Changes", MessageBoxButton.YesNoCancel);
+                var result = MessageBox.Show("Save changes before starting the patcher?", "Unsaved Changes", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (result == MessageBoxResult.Yes) { if (!PerformSave()) return; }
                 else if (result == MessageBoxResult.Cancel) return;
             }
@@ -232,10 +232,14 @@ namespace EnshroudedConfigManager
             string patcherPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "enshrouded-patcher.exe");
             if (File.Exists(patcherPath))
             {
-                Process.Start(new ProcessStartInfo(patcherPath) { UseShellExecute = true });
-                Application.Current.Shutdown();
+                try
+                {
+                    Process.Start(new ProcessStartInfo(patcherPath) { UseShellExecute = true });
+                    Application.Current.Shutdown();
+                }
+                catch (Exception ex) { MessageBox.Show($"Could not start patcher: {ex.Message}"); }
             }
-            else MessageBox.Show("enshrouded-patcher.exe not found!");
+            else MessageBox.Show("enshrouded-patcher.exe not found!", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }
