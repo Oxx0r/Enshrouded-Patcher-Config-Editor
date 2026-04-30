@@ -2,7 +2,7 @@
 
 # Enshrouded Patcher Config Editor
 
-A dedicated configuration tool for the [**Enshrouded Patcher**](https://www.nexusmods.com/enshrouded/mods/91). This editor provides a user-friendly interface to manage your `config.json` without dealing with raw JSON.
+A dedicated configuration tool for the [**Enshrouded Patcher**](https://www.nexusmods.com/enshrouded/mods/91) by kenuaena. This editor provides a user-friendly interface to manage your `config.json` without dealing with raw JSON.
 
 ## Features
 * **Visual Options Management:** Easily enable or disable options for Player, Inventory, World, and Gameplay sections.
