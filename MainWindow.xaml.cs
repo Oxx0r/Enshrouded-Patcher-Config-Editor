@@ -10,6 +10,7 @@ using System.Text.RegularExpressions;
 using System.Linq;
 using System.Globalization;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace EnshroudedConfigManager
 {
@@ -18,6 +19,7 @@ namespace EnshroudedConfigManager
         private ConfigRoot? _config;
         private string _filePath = "config.json";
         private Dictionary<string, Control> _inputRefs = new Dictionary<string, Control>();
+        private bool _isDirty = false;
 
         public MainWindow()
         {
@@ -28,45 +30,46 @@ namespace EnshroudedConfigManager
 
         private void SetWindowTitleWithVersion()
         {
-            // Gets the version from the Assembly (defined in .csproj)
             var version = Assembly.GetExecutingAssembly().GetName().Version;
             string versionString = version != null ? $"{version.Major}.{version.Minor}.{version.Build}" : "1.0.0";
             this.Title = $"Enshrouded Patcher Config Editor v{versionString} by Oxx0r";
         }
 
+        private void MarkAsDirty(object sender, EventArgs e) => _isDirty = true;
+
         private void LoadAndBuildUI()
         {
             if (!File.Exists(_filePath))
             {
-                MessageBox.Show("Error: 'config.json' not found!\n\nPlease make sure the file is in the same folder as this application.", 
-                                "File Missing", MessageBoxButton.OK, MessageBoxImage.Error);
-                Application.Current.Shutdown();
+                MessageBox.Show("Error: 'config.json' not found!", "File Missing", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
-            try 
+            try
             {
                 string jsonContent = File.ReadAllText(_filePath);
                 jsonContent = Regex.Replace(jsonContent, @"(?<="":\s*"")(.*?)(?="")", m => m.Value.Replace("\\", "\\\\"));
-
                 _config = JsonConvert.DeserializeObject<ConfigRoot>(jsonContent);
+
                 if (_config == null) return;
 
                 TxtVersion.Text = _config.kfcParserVersion;
+
+                // Aufruf der Sektions-Builder
                 BuildPathSection();
                 BuildModSections();
                 BuildSettingsSection();
+
+                _isDirty = false;
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Load Error: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
-                Application.Current.Shutdown();
-            }
+            catch (Exception ex) { MessageBox.Show($"Load Error: {ex.Message}"); }
         }
 
+        // Erstellt die Eingabefelder für gameDirectory und outputDirectory
         private void BuildPathSection()
         {
             if (_config == null) return;
+            PathSection.Children.Clear(); // Falls neu geladen wird
             AddPathRow("gameDirectory", _config.gameDirectory);
             AddPathRow("outputDirectory", _config.outputDirectory);
         }
@@ -76,23 +79,27 @@ namespace EnshroudedConfigManager
             var dock = new DockPanel { Margin = new Thickness(0, 2, 0, 2) };
             var lbl = new TextBlock { Text = label + ":", Width = 120, VerticalAlignment = VerticalAlignment.Center };
             var txt = new TextBox { Text = value, Background = new SolidColorBrush(Color.FromRgb(43, 43, 43)), Foreground = Brushes.White };
+
+            txt.TextChanged += MarkAsDirty;
             _inputRefs["TOP_" + label] = txt;
+
             dock.Children.Add(lbl);
             dock.Children.Add(txt);
-            PathSection.Children.Add(dock);
+            PathSection.Children.Add(dock); // Fügt die Zeile zum StackPanel in der XAML hinzu
         }
 
         private void BuildModSections()
         {
             if (_config == null) return;
+            ModSection.Children.Clear();
             string[] cats = { "player", "inventory", "world", "gameplay" };
-            
+
             foreach (var catName in cats)
             {
                 var propInfo = _config.GetType().GetProperty(catName);
                 if (propInfo == null) continue;
                 var catObj = (JObject)propInfo.GetValue(_config)!;
-                
+
                 var header = new TextBlock { Text = catName.ToUpper(), Foreground = new SolidColorBrush(Color.FromRgb(58, 126, 191)), FontWeight = FontWeights.Bold, Margin = new Thickness(0, 15, 0, 5) };
                 ModSection.Children.Add(header);
 
@@ -100,13 +107,13 @@ namespace EnshroudedConfigManager
                 {
                     var modKey = mod.Key;
                     var modData = (JObject)mod.Value!;
-
                     var container = new Border { Background = new SolidColorBrush(Color.FromRgb(35, 35, 35)), Margin = new Thickness(0, 2, 0, 2), Padding = new Thickness(8), CornerRadius = new CornerRadius(3) };
                     var grid = new Grid();
                     grid.RowDefinitions.Add(new RowDefinition());
                     grid.RowDefinitions.Add(new RowDefinition());
 
                     var cbEnabled = new CheckBox { Content = modKey, IsChecked = (bool?)modData["enabled"] ?? false, Foreground = Brushes.White, FontWeight = FontWeights.Bold, VerticalContentAlignment = VerticalAlignment.Center };
+                    cbEnabled.Click += MarkAsDirty;
                     _inputRefs[$"{catName}_{modKey}_enabled"] = cbEnabled;
                     grid.Children.Add(cbEnabled);
 
@@ -117,21 +124,16 @@ namespace EnshroudedConfigManager
 
                         if (p.Value.Type == JTokenType.Boolean)
                         {
-                            var subCb = new CheckBox { 
-                                Content = p.Name, 
-                                IsChecked = (bool)p.Value, 
-                                Foreground = Brushes.LightGray, 
-                                FontSize = 10, 
-                                Margin = new Thickness(10, 0, 5, 0),
-                                VerticalContentAlignment = VerticalAlignment.Center
-                            };
+                            var subCb = new CheckBox { Content = p.Name, IsChecked = (bool)p.Value, Foreground = Brushes.LightGray, FontSize = 10, Margin = new Thickness(10, 0, 5, 0), VerticalContentAlignment = VerticalAlignment.Center };
+                            subCb.Click += MarkAsDirty;
                             _inputRefs[$"{catName}_{modKey}_{p.Name}"] = subCb;
                             stackValues.Children.Add(subCb);
                         }
-                        else 
+                        else
                         {
                             stackValues.Children.Add(new TextBlock { Text = p.Name + ":", FontSize = 10, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(10, 0, 2, 0), Foreground = Brushes.LightGray });
                             var txtVal = new TextBox { Text = p.Value.ToString(Formatting.None).Trim('"'), Width = 50, Height = 20, FontSize = 10, Background = Brushes.Black, Foreground = Brushes.White };
+                            txtVal.TextChanged += MarkAsDirty;
                             _inputRefs[$"{catName}_{modKey}_{p.Name}"] = txtVal;
                             stackValues.Children.Add(txtVal);
                         }
@@ -153,12 +155,14 @@ namespace EnshroudedConfigManager
         private void BuildSettingsSection()
         {
             if (_config == null) return;
+            SettingsSection.Children.Clear();
             var header = new TextBlock { Text = "INTERNAL SETTINGS", Foreground = new SolidColorBrush(Color.FromRgb(58, 126, 191)), FontWeight = FontWeights.Bold, Margin = new Thickness(0, 20, 0, 5) };
             SettingsSection.Children.Add(header);
             var panel = new WrapPanel();
             foreach (var s in _config.settings)
             {
                 var cb = new CheckBox { Content = s.Key, IsChecked = s.Value, Margin = new Thickness(0, 5, 20, 5), Foreground = Brushes.White };
+                cb.Click += MarkAsDirty;
                 _inputRefs["SET_" + s.Key] = cb;
                 panel.Children.Add(cb);
             }
@@ -167,7 +171,12 @@ namespace EnshroudedConfigManager
 
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_config == null) return;
+            if (PerformSave()) MessageBox.Show("Configuration saved successfully!");
+        }
+
+        private bool PerformSave()
+        {
+            if (_config == null) return false;
             try
             {
                 _config.gameDirectory = ((TextBox)_inputRefs["TOP_gameDirectory"]).Text;
@@ -183,49 +192,50 @@ namespace EnshroudedConfigManager
                     {
                         var modKey = mod.Key;
                         var modData = (JObject)mod.Value!;
-
                         modData["enabled"] = ((CheckBox)_inputRefs[$"{catName}_{modKey}_enabled"]).IsChecked ?? false;
 
                         foreach (var prop in modData.Properties().ToList())
                         {
                             if (prop.Name == "enabled" || prop.Name == "description") continue;
-                            
                             var control = _inputRefs[$"{catName}_{modKey}_{prop.Name}"];
-
-                            if (control is CheckBox cb)
-                            {
-                                modData[prop.Name] = cb.IsChecked ?? false;
-                            }
+                            if (control is CheckBox cb) modData[prop.Name] = cb.IsChecked ?? false;
                             else if (control is TextBox tb)
                             {
-                                string rawValue = tb.Text.Trim();
-                                if (double.TryParse(rawValue, NumberStyles.Any, CultureInfo.InvariantCulture, out double dbl))
-                                {
-                                    if (dbl % 1 == 0)
-                                        modData[prop.Name] = (long)dbl;
-                                    else
-                                        modData[prop.Name] = dbl;
-                                }
-                                else
-                                {
-                                    modData[prop.Name] = tb.Text;
-                                }
+                                string raw = tb.Text.Trim();
+                                if (double.TryParse(raw, NumberStyles.Any, CultureInfo.InvariantCulture, out double dbl))
+                                    modData[prop.Name] = (dbl % 1 == 0) ? (long)dbl : dbl;
+                                else modData[prop.Name] = tb.Text;
                             }
                         }
                     }
                 }
-
                 foreach (var key in _config.settings.Keys.ToList())
-                {
                     _config.settings[key] = ((CheckBox)_inputRefs["SET_" + key]).IsChecked ?? false;
-                }
 
-                string json = JsonConvert.SerializeObject(_config, Formatting.Indented);
-                json = json.Replace("\\\\", "\\");
+                string json = JsonConvert.SerializeObject(_config, Formatting.Indented).Replace("\\\\", "\\");
                 File.WriteAllText(_filePath, json);
-                MessageBox.Show("Configuration saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                _isDirty = false;
+                return true;
             }
-            catch (Exception ex) { MessageBox.Show("Error while saving: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error); }
+            catch (Exception ex) { MessageBox.Show("Error: " + ex.Message); return false; }
+        }
+
+        private void PatchAndRunButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isDirty)
+            {
+                var result = MessageBox.Show("Save changes before starting the patcher?", "Unsaved Changes", MessageBoxButton.YesNoCancel);
+                if (result == MessageBoxResult.Yes) { if (!PerformSave()) return; }
+                else if (result == MessageBoxResult.Cancel) return;
+            }
+
+            string patcherPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "enshrouded-patcher.exe");
+            if (File.Exists(patcherPath))
+            {
+                Process.Start(new ProcessStartInfo(patcherPath) { UseShellExecute = true });
+                Application.Current.Shutdown();
+            }
+            else MessageBox.Show("enshrouded-patcher.exe not found!");
         }
     }
 }
